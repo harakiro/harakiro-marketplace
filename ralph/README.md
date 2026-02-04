@@ -5,42 +5,27 @@
 
 ## Installation
 
-### Option 1: Local Installation (for testing)
-
 ```bash
-# 1. Unzip and navigate to the marketplace
-unzip ralph-marketplace.zip
-cd ralph-marketplace
+# Add the marketplace
+/plugin marketplace add harakiro/claude-plugins-harakiro
 
-# 2. In Claude Code, add the marketplace
-/plugin marketplace add ./ralph-marketplace
-
-# 3. Install the plugin
-/plugin install ralph@ralph-marketplace
-
-# 4. Restart Claude Code
-```
-
-### Option 2: From GitHub (when published)
-
-```
-/plugin marketplace add your-org/ralph-marketplace
-/plugin install ralph@your-org
+# Install the plugin
+/plugin install ralph@harakiro-plugins
 ```
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/ralph:ralph-init` | Initialize Ralph in current project |
-| `/ralph:ralph-onboard` | Analyze existing codebase, create CLAUDE.md + PRD.md |
-| `/ralph:ralph-plan` | Create ROADMAP from PRD or plan next feature |
-| `/ralph:ralph-build` | Implement the next task (manual, up to 2 tasks) |
-| `/ralph:ralph-loop` | **Automated**: Build entire feature using Task agents |
-| `/ralph:ralph-cancel` | Cancel an active loop |
-| `/ralph:ralph-feedback` | Parse raw feedback into structured format |
-| `/ralph:ralph-review` | Create FIX tasks from feedback |
-| `/ralph:ralph-status` | Show current progress |
+| Command | Model | Description |
+|---------|-------|-------------|
+| `/ralph:ralph-init` | Opus | Initialize Ralph in current project |
+| `/ralph:ralph-onboard` | Opus | Analyze existing codebase, create CLAUDE.md + PRD.md |
+| `/ralph:ralph-plan` | Opus | Create ROADMAP from PRD or plan next feature |
+| `/ralph:ralph-build` | Session | Implement the next task (manual, up to 2 tasks) |
+| `/ralph:ralph-loop` | Sonnet | **Automated**: Build entire feature using Task agents |
+| `/ralph:ralph-cancel` | Haiku | Cancel an active loop |
+| `/ralph:ralph-feedback` | Session | Parse raw feedback into structured format |
+| `/ralph:ralph-review` | Opus | Create FIX tasks from feedback |
+| `/ralph:ralph-status` | Haiku | Show current progress |
 
 ## Workflows
 
@@ -97,9 +82,9 @@ The orchestrator tracks progress in `.ralph/loop-state.json` and continues spawn
 
 | Prefix | Meaning | Created By |
 |--------|---------|------------|
-| FEAT-NNN | Feature task | /ralph-plan |
-| FIX-NNN | Bug fix | /ralph-review |
-| ENH-NNN | Deferred enhancement | /ralph-review |
+| FEAT-NNN | Feature task | `/ralph:ralph-plan` |
+| FIX-NNN | Bug fix | `/ralph:ralph-review` |
+| ENH-NNN | Deferred enhancement | `/ralph:ralph-review` |
 
 ## The Loop
 

@@ -6,7 +6,7 @@ A Claude Code plugin marketplace.
 
 ```bash
 # Add the marketplace
-/plugin marketplace add harakiro/claude-plugin-ralph
+/plugin marketplace add harakiro/claude-plugins-harakiro
 
 # Install plugins
 /plugin install ralph@harakiro-plugins
