@@ -1,0 +1,13 @@
+{
+  "name": "ralph-marketplace",
+  "owner": {
+    "name": "Ralph Agent"
+  },
+  "plugins": [
+    {
+      "name": "ralph",
+      "source": "./ralph",
+      "description": "Iterative development loop with ONBOARD, PLAN, BUILD, FEEDBACK, REVIEW phases"
+    }
+  ]
+}
