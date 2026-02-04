@@ -1,13 +1,13 @@
 {
-  "name": "ralph-marketplace",
+  "name": "harakiro-plugins",
   "owner": {
-    "name": "Ralph Agent"
+    "name": "harakiro"
   },
   "plugins": [
     {
       "name": "ralph",
       "source": "./ralph",
-      "description": "Iterative development loop with ONBOARD, PLAN, BUILD, FEEDBACK, REVIEW phases"
+      "description": "Automated AI development loop — Plan with Opus, build with Sonnet, iterate until done"
     }
   ]
 }

@@ -1,46 +1,77 @@
-# Ralph Agent Marketplace
+# Harakiro Plugins
 
-A Claude Code plugin marketplace containing the Ralph Agent plugin.
+A Claude Code plugin marketplace.
 
 ## Installation
 
 ```bash
-# 1. Download and unzip the marketplace
-unzip ralph-marketplace.zip
+# Add the marketplace
+/plugin marketplace add harakiro/claude-plugin-ralph
 
-# 2. In Claude Code, add this marketplace
-/plugin marketplace add /path/to/ralph-marketplace
-
-# 3. Install the Ralph plugin
-/plugin install ralph@ralph-marketplace
-
-# 4. Restart Claude Code to load the new commands
+# Install plugins
+/plugin install ralph@harakiro-plugins
 ```
 
 ## Available Plugins
 
-### ralph
+| Plugin | Description | Models |
+|--------|-------------|--------|
+| [ralph](./ralph) | Automated AI development loop | Opus, Sonnet, Haiku |
 
-Iterative development loop for AI coding assistants.
+---
 
-**Commands:**
-- `/ralph-init` - Initialize Ralph in project
-- `/ralph-onboard` - Analyze existing codebase
-- `/ralph-plan` - Plan features and tasks
-- `/ralph-build` - Implement tasks
-- `/ralph-feedback` - Parse raw feedback
-- `/ralph-review` - Create fix tasks
-- `/ralph-status` - Show progress
+## Ralph Agent
 
-See `ralph/README.md` for detailed usage.
+Automates feature development through Task agents. Plan with Opus, build with Sonnet, iterate until done.
 
-## Publishing to GitHub
+### Commands
 
-To make this marketplace publicly installable:
+| Command | Model | Description |
+|---------|-------|-------------|
+| `/ralph:ralph-init` | Opus | Initialize project structure |
+| `/ralph:ralph-onboard` | Opus | Analyze existing codebase |
+| `/ralph:ralph-plan` | Opus | Create roadmap and task breakdown |
+| `/ralph:ralph-loop` | Sonnet | Automated feature builder (Task agents) |
+| `/ralph:ralph-build` | Session | Manual task implementation |
+| `/ralph:ralph-review` | Opus | Process feedback into fix tasks |
+| `/ralph:ralph-feedback` | Session | Parse raw feedback |
+| `/ralph:ralph-status` | Haiku | Display progress |
+| `/ralph:ralph-cancel` | Haiku | Cancel active loop |
 
-1. Push to a GitHub repository
-2. Users can then install with:
+### Workflow
+
+```
+/ralph:ralph-init          # Set up project
+/ralph:ralph-onboard       # (existing codebase) or create PRD.md
+/ralph:ralph-plan          # Create roadmap + tasks
+/ralph:ralph-loop          # Build entire feature automatically
+# Test manually...
+/ralph:ralph-feedback      # Capture issues
+/ralph:ralph-review        # Create fix tasks
+/ralph:ralph-loop          # Implement fixes
+/ralph:ralph-plan          # Next feature
+```
+
+See [ralph/README.md](./ralph/README.md) for detailed documentation.
+
+---
+
+## Adding New Plugins
+
+To add a plugin to this marketplace:
+
+1. Create a new directory: `my-plugin/`
+2. Add `.claude-plugin/plugin.json`:
+   ```json
+   {
+     "name": "my-plugin",
+     "description": "What it does",
+     "version": "1.0.0"
+   }
    ```
-   /plugin marketplace add your-username/ralph-marketplace
-   /plugin install ralph@your-username
-   ```
+3. Add commands in `my-plugin/commands/*.md`
+4. Register in `.claude-plugin/marketplace.json`
+
+## License
+
+MIT
