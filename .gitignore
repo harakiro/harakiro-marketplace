@@ -19,3 +19,6 @@ npm-debug.log
 
 # Local Claude Code dev settings (not shipped with plugin)
 **/settings.local.json
+
+# Build artifacts (.skill bundles produced by deck-kit/scripts/pack.sh)
+deck-kit/dist/

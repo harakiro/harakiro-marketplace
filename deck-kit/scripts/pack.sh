@@ -1,24 +1,39 @@
 #!/usr/bin/env bash
-# Repack skills/deck-publish/ into deck-publish.skill and deck-publish.zip
-# at the repo root. Run after editing any file under skills/deck-publish/.
+# Package each skill in skills/ into a single-file .skill bundle (zip archive)
+# under deck-kit/dist/, ready to upload via Claude Desktop's Settings → Skills.
+# Run after editing any file under skills/.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [[ ! -d skills/deck-publish ]]; then
-  echo "skills/deck-publish/ not found" >&2
+if [[ ! -d skills ]]; then
+  echo "skills/ not found (expected to run from deck-kit/scripts/)" >&2
   exit 1
 fi
 
-rm -f deck-publish.skill deck-publish.zip
+OUT_DIR="dist"
+mkdir -p "$OUT_DIR"
 
-(cd skills && zip -r -q ../../deck-publish.skill deck-publish \
-  -x '*/node_modules/*' \
-  -x '*/.DS_Store' \
-  -x '*/test/*' \
-  -x '*/package-lock.json')
+pack_one() {
+  local name="$1"
+  if [[ ! -f "skills/$name/SKILL.md" ]]; then
+    echo "  skip $name (no SKILL.md)"
+    return
+  fi
+  local out="$OUT_DIR/$name.skill"
+  rm -f "$out"
+  ( cd skills && zip -r -q "../$out" "$name" \
+      -x "$name/node_modules/*" \
+      -x "$name/.DS_Store" \
+      -x "$name/test/*" \
+      -x "$name/package-lock.json" )
+  local size
+  size=$(ls -lh "$out" | awk '{print $5}')
+  echo "  wrote $size  $out"
+}
 
-cp deck-publish.skill deck-publish.zip
-
-echo "wrote $(ls -lh deck-publish.skill | awk '{print $5}') deck-publish.skill"
-echo "wrote $(ls -lh deck-publish.zip   | awk '{print $5}') deck-publish.zip"
+echo "Packing skills into $OUT_DIR/ ..."
+for skill_dir in skills/*/; do
+  pack_one "$(basename "$skill_dir")"
+done
+echo "Done."
