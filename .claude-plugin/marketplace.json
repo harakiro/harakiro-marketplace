@@ -1,5 +1,5 @@
 {
-  "name": "harakiro-plugins",
+  "name": "claude-plugins-harakiro",
   "owner": {
     "name": "harakiro"
   },
@@ -8,6 +8,11 @@
       "name": "ralph",
       "source": "./ralph",
       "description": "Automated AI development loop — Plan with Opus, build with Sonnet, iterate until done"
+    },
+    {
+      "name": "deck-kit",
+      "source": "./deck-kit",
+      "description": "Branded presentation deck toolkit. Ships three skills: deck-brand-init (brand.yaml scaffolding), deck-create (conversational HTML deck authoring), and deck-publish (HTML to PDF or PPTX via Puppeteer + pptxgenjs, both pixel-perfect screenshot and fully-editable modes). Works in Claude Code and GitHub Copilot CLI."
     }
   ]
 }

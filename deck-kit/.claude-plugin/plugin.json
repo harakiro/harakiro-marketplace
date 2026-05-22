@@ -1,0 +1,21 @@
+{
+  "name": "deck-kit",
+  "description": "Branded presentation deck toolkit. Ships three skills: deck-brand-init (brand.yaml scaffolding), deck-create (conversational HTML deck authoring), and deck-publish (HTML to PDF or PPTX via Puppeteer + pptxgenjs, both pixel-perfect screenshot and fully-editable modes). Works in Claude Code and GitHub Copilot CLI.",
+  "version": "1.0.0",
+  "author": {
+    "name": "harakiro"
+  },
+  "homepage": "https://github.com/harakiro/claude-plugins-harakiro/tree/main/deck-kit",
+  "repository": "https://github.com/harakiro/claude-plugins-harakiro",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "presentations",
+    "slides",
+    "pptx",
+    "pdf",
+    "deck",
+    "copilot-cli",
+    "claude-code"
+  ]
+}
