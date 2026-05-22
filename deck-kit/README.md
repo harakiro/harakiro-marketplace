@@ -1,6 +1,6 @@
 # Deck Kit
 
-Branded presentation deck toolkit. Author decks as HTML, then convert to PPTX or PDF. Works in **Claude Code** and **GitHub Copilot CLI** from a single source of truth at `.claude/skills/`.
+Branded presentation deck toolkit. Author decks as HTML, then convert to PPTX or PDF. Works in **Claude Code** and **GitHub Copilot CLI** from a single source of truth at `skills/`.
 
 ## What's inside
 
@@ -27,13 +27,13 @@ copilot
 
 ```bash
 git clone https://github.com/<github-user>/deck-kit.git ~/.copilot/plugins/deck-kit
-ln -s ~/.copilot/plugins/deck-kit/.claude/skills ~/.copilot/skills/deck-kit
+ln -s ~/.copilot/plugins/deck-kit/skills ~/.copilot/skills/deck-kit
 ```
 
 **One-time setup for `deck-publish`** (the publish step needs Node.js, Puppeteer, and pptxgenjs):
 
 ```bash
-cd ~/.copilot/plugins/deck-kit/.claude/skills/deck-publish
+cd ~/.copilot/plugins/deck-kit/skills/deck-publish
 npm install
 ```
 
@@ -63,9 +63,9 @@ claude
 
 ```bash
 git clone https://github.com/<github-user>/deck-kit.git ~/.claude/plugins/deck-kit
-ln -s ~/.claude/plugins/deck-kit/.claude/skills/deck-create ~/.claude/skills/deck-create
-ln -s ~/.claude/plugins/deck-kit/.claude/skills/deck-publish ~/.claude/skills/deck-publish
-ln -s ~/.claude/plugins/deck-kit/.claude/skills/deck-brand-init ~/.claude/skills/deck-brand-init
+ln -s ~/.claude/plugins/deck-kit/skills/deck-create ~/.claude/skills/deck-create
+ln -s ~/.claude/plugins/deck-kit/skills/deck-publish ~/.claude/skills/deck-publish
+ln -s ~/.claude/plugins/deck-kit/skills/deck-brand-init ~/.claude/skills/deck-brand-init
 ```
 
 Run the same `npm install` step inside `deck-publish/` before the first publish.
@@ -91,13 +91,13 @@ claude
 deck-kit/
 ├── .claude-plugin/
 │   └── plugin.json            # Plugin manifest (read by both Claude Code and Copilot CLI)
-└── .claude/skills/
+└── skills/
     ├── deck-create/           # SKILL.md + references/
     ├── deck-publish/          # SKILL.md + scripts/ + references/ + package.json
     └── deck-brand-init/       # SKILL.md + references/
 ```
 
-`.claude/skills/` is the only repo-root path read by **both** Claude Code and Copilot CLI, so no symlinks or build step are needed.
+`skills/` is the canonical path Claude Code's plugin loader scans. Copilot CLI installs symlink it into `~/.copilot/skills/deck-kit` (see install steps above), so a single source tree serves both clients with no build step.
 
 ## License
 

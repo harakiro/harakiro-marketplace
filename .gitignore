@@ -15,3 +15,6 @@ npm-debug.log
 # Local testing artifacts
 *.log
 *.tmp
+
+# Local Claude Code dev settings (not shipped with plugin)
+**/settings.local.json

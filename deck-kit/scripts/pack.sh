@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Repack .claude/skills/deck-publish/ into deck-publish.skill and deck-publish.zip
-# at the repo root. Run after editing any file under .claude/skills/deck-publish/.
+# Repack skills/deck-publish/ into deck-publish.skill and deck-publish.zip
+# at the repo root. Run after editing any file under skills/deck-publish/.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [[ ! -d .claude/skills/deck-publish ]]; then
-  echo ".claude/skills/deck-publish/ not found" >&2
+if [[ ! -d skills/deck-publish ]]; then
+  echo "skills/deck-publish/ not found" >&2
   exit 1
 fi
 
 rm -f deck-publish.skill deck-publish.zip
 
-(cd .claude/skills && zip -r -q ../../deck-publish.skill deck-publish \
+(cd skills && zip -r -q ../../deck-publish.skill deck-publish \
   -x '*/node_modules/*' \
   -x '*/.DS_Store' \
   -x '*/test/*' \
