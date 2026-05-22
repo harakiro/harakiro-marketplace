@@ -14,6 +14,8 @@
  * matters). Tables stay as native PPT tables.
  */
 
+require("./lib/bootstrap");
+
 const fs = require("fs");
 const path = require("path");
 const pptxgen = require("pptxgenjs");

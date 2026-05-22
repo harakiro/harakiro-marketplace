@@ -10,6 +10,7 @@ Thumbs.db
 
 # Node (if any tooling added later)
 node_modules/
+package-lock.json
 npm-debug.log
 
 # Local testing artifacts

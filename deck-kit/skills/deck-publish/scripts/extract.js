@@ -16,6 +16,8 @@
  * Layer types: "shape", "text", "image", "table".
  */
 
+require("./lib/bootstrap");
+
 const fs = require("fs");
 const path = require("path");
 const { launchBrowser, loadPage } = require("./lib/browser");

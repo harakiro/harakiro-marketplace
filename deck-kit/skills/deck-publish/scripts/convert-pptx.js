@@ -11,38 +11,14 @@
  * Output: JSON to stdout { success, output, size, slides } or { success: false, error }
  */
 
+require('./lib/bootstrap');
+
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execSync } = require('child_process');
 const { launchBrowser, loadPage } = require('./lib/browser');
-
-/**
- * Resolve pptxgenjs, installing it on demand if not already available.
- * Checks: skill-local node_modules, parent dirs, then auto-installs.
- */
-async function loadPptxGenJS() {
-  // Try resolving from the scripts directory upward
-  const searchPaths = [
-    path.join(__dirname, 'node_modules'),
-    path.join(__dirname, '..', 'node_modules'),
-    path.join(__dirname, '..', '..', 'node_modules'),
-    path.join(__dirname, '..', '..', '..', 'node_modules'),
-  ];
-
-  for (const p of searchPaths) {
-    const candidate = path.join(p, 'pptxgenjs');
-    try {
-      return require(candidate);
-    } catch {}
-  }
-
-  // Not found — install into the skill's scripts directory
-  const installDir = __dirname;
-  process.stderr.write('pptxgenjs not found, installing...\n');
-  execSync('npm install --no-save pptxgenjs', { cwd: installDir, stdio: 'pipe' });
-  return require(path.join(installDir, 'node_modules', 'pptxgenjs'));
-}
+const PptxGenJS = require('pptxgenjs');
 
 function parseArgs(argv) {
   const args = argv.slice(2);
@@ -364,8 +340,6 @@ async function main() {
     await browser.close();
     browser = null;
 
-    // Build PPTX — resolve pptxgenjs from skill's own node_modules or install on demand
-    const PptxGenJS = await loadPptxGenJS();
     const pptx = new PptxGenJS();
 
     pptx.defineLayout({

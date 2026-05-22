@@ -33,14 +33,13 @@ git clone https://github.com/harakiro/harakiro-marketplace.git ~/.copilot/plugin
 ln -s ~/.copilot/plugins/harakiro-marketplace/deck-kit/skills ~/.copilot/skills/deck-kit
 ```
 
-**One-time setup for `deck-publish`** (the publish step needs Node.js, Puppeteer, and pptxgenjs):
+**`deck-publish` dependencies install themselves.** The first time you run a publish command, `deck-publish` detects missing native deps (Puppeteer + pptxgenjs) and runs `npm install` automatically — expect a one-time ~30–60s wait and a ~150–200 MB Chromium download on first use. Subsequent runs are instant.
+
+If you'd rather front-load the install (e.g. for an offline laptop), do it manually:
 
 ```bash
-cd ~/.copilot/plugins/harakiro-marketplace/deck-kit/skills/deck-publish
-npm install
+cd ~/.copilot/plugins/harakiro-marketplace/deck-kit/skills/deck-publish && npm install
 ```
-
-This downloads Puppeteer's bundled Chromium (~150–200 MB) on first install. Subsequent installs are cached.
 
 ### Verify
 
@@ -72,7 +71,7 @@ ln -s ~/.claude/plugins/harakiro-marketplace/deck-kit/skills/deck-publish ~/.cla
 ln -s ~/.claude/plugins/harakiro-marketplace/deck-kit/skills/deck-brand-init ~/.claude/skills/deck-brand-init
 ```
 
-Run the same `npm install` step inside `deck-publish/` before the first publish.
+`deck-publish` will self-install Puppeteer + pptxgenjs on first publish call (one-time ~30–60s). To do it manually instead: `cd ~/.claude/plugins/harakiro-marketplace/deck-kit/skills/deck-publish && npm install`.
 
 ### Verify
 

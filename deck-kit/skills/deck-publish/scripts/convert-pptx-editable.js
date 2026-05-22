@@ -12,6 +12,8 @@
  * can't tell the difference at the result level.
  */
 
+require('./lib/bootstrap');
+
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

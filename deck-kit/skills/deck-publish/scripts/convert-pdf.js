@@ -13,6 +13,8 @@
  * Output: JSON to stdout { success, output, size } or { success: false, error }
  */
 
+require('./lib/bootstrap');
+
 const path = require('path');
 const fs = require('fs');
 const { launchBrowser, loadPage } = require('./lib/browser');
