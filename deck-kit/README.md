@@ -20,20 +20,23 @@ Copilot CLI auto-discovers skills in `.github/skills/`, `.claude/skills/`, `.age
 
 ```bash
 copilot
-> /plugin install <github-user>/deck-kit
+> /plugin marketplace add harakiro/harakiro-marketplace
+> /plugin install deck-kit
 ```
+
+(Equivalent from the shell: `copilot plugin marketplace add harakiro/harakiro-marketplace && copilot plugin install deck-kit`.)
 
 **Manual install (for development or offline use):**
 
 ```bash
-git clone https://github.com/<github-user>/deck-kit.git ~/.copilot/plugins/deck-kit
-ln -s ~/.copilot/plugins/deck-kit/skills ~/.copilot/skills/deck-kit
+git clone https://github.com/harakiro/harakiro-marketplace.git ~/.copilot/plugins/harakiro-marketplace
+ln -s ~/.copilot/plugins/harakiro-marketplace/deck-kit/skills ~/.copilot/skills/deck-kit
 ```
 
 **One-time setup for `deck-publish`** (the publish step needs Node.js, Puppeteer, and pptxgenjs):
 
 ```bash
-cd ~/.copilot/plugins/deck-kit/skills/deck-publish
+cd ~/.copilot/plugins/harakiro-marketplace/deck-kit/skills/deck-publish
 npm install
 ```
 
@@ -56,16 +59,17 @@ Claude Code reads skills from `.claude/skills/` (project-scoped) and `~/.claude/
 
 ```
 claude
-> /plugin install <github-user>/deck-kit
+> /plugin marketplace add harakiro/harakiro-marketplace
+> /plugin install deck-kit@harakiro-marketplace
 ```
 
 **Manual install:**
 
 ```bash
-git clone https://github.com/<github-user>/deck-kit.git ~/.claude/plugins/deck-kit
-ln -s ~/.claude/plugins/deck-kit/skills/deck-create ~/.claude/skills/deck-create
-ln -s ~/.claude/plugins/deck-kit/skills/deck-publish ~/.claude/skills/deck-publish
-ln -s ~/.claude/plugins/deck-kit/skills/deck-brand-init ~/.claude/skills/deck-brand-init
+git clone https://github.com/harakiro/harakiro-marketplace.git ~/.claude/plugins/harakiro-marketplace
+ln -s ~/.claude/plugins/harakiro-marketplace/deck-kit/skills/deck-create ~/.claude/skills/deck-create
+ln -s ~/.claude/plugins/harakiro-marketplace/deck-kit/skills/deck-publish ~/.claude/skills/deck-publish
+ln -s ~/.claude/plugins/harakiro-marketplace/deck-kit/skills/deck-brand-init ~/.claude/skills/deck-brand-init
 ```
 
 Run the same `npm install` step inside `deck-publish/` before the first publish.
