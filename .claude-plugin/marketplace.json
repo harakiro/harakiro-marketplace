@@ -1,5 +1,6 @@
 {
   "name": "harakiro-marketplace",
+  "description": "Harakiro's plugins for Claude Code and Copilot CLI — currently ships ralph (automated AI development loop) and deck-kit (branded HTML-to-PPTX/PDF presentation toolkit).",
   "owner": {
     "name": "harakiro"
   },
