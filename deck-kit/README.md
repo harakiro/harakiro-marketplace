@@ -21,10 +21,10 @@ Copilot CLI auto-discovers skills in `.github/skills/`, `.claude/skills/`, `.age
 ```bash
 copilot
 > /plugin marketplace add harakiro/harakiro-marketplace
-> /plugin install deck-kit
+> /plugin install deck-kit@harakiro-marketplace
 ```
 
-(Equivalent from the shell: `copilot plugin marketplace add harakiro/harakiro-marketplace && copilot plugin install deck-kit`.)
+(Equivalent from the shell: `copilot plugin marketplace add harakiro/harakiro-marketplace && copilot plugin install deck-kit@harakiro-marketplace`.)
 
 **Manual install (for development or offline use):**
 
