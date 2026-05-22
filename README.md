@@ -9,7 +9,7 @@ A Claude Code plugin marketplace.
 /plugin marketplace add harakiro/claude-plugins-harakiro
 
 # Install plugins
-/plugin install ralph@harakiro-plugins
+/plugin install ralph@harakiro-marketplace
 ```
 
 ## Available Plugins

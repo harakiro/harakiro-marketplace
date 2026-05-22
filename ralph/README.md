@@ -10,7 +10,7 @@
 /plugin marketplace add harakiro/claude-plugins-harakiro
 
 # Install the plugin
-/plugin install ralph@harakiro-plugins
+/plugin install ralph@harakiro-marketplace
 ```
 
 ## Commands
