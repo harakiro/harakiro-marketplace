@@ -730,23 +730,45 @@ async function main() {
 
   const data = await page.evaluate(extractInPage, selector);
 
-  // Helper: screenshot an element with all its descendants hidden via
-  // `visibility: hidden`, so only the element's own background/gradient is
-  // captured. Descendants keep their layout (visibility:hidden preserves it)
-  // but render nothing, which lets us produce a clean background image over
-  // which editable text/shape layers can be overlaid without duplication.
-  async function screenshotBackgroundOnly(handle) {
-    await handle.evaluate((el) => {
-      // Hide descendant elements via visibility (preserves layout).
-      const all = el.querySelectorAll("*");
-      for (const d of all) {
-        d.setAttribute("data-htmp-pv", d.style.visibility || "__unset__");
-        d.style.visibility = "hidden";
+  // Helper: screenshot an element capturing only its own background/gradient,
+  // with no overlapping foreground content baked in. The element's bbox often
+  // covers the whole slide (e.g. a position:absolute .noise overlay with
+  // inset:0), so we can't just hide descendants — siblings and cousins inside
+  // the slide render INSIDE the bbox at higher z-index and would otherwise
+  // bake their text into the screenshot, producing visible duplication when
+  // editable text layers are overlaid in the PPTX.
+  //
+  // Strategy: walk up from `el` to its containing slide. Hide every element
+  // inside the slide that is NOT on the el → slide ancestor path AND NOT a
+  // descendant of `el`. The slide root stays visible so its background color
+  // shows through any alpha in the gradient.
+  async function screenshotBackgroundOnly(handle, slideHandle) {
+    await handle.evaluate((el, slide) => {
+      const scope = slide || document.body;
+
+      // Build the el → scope ancestor path (inclusive on both ends).
+      const path = new Set();
+      let p = el;
+      while (p && p !== scope.parentElement) {
+        path.add(p);
+        p = p.parentElement;
       }
-      // Direct text nodes aren't elements and aren't hit by querySelectorAll,
-      // so they would otherwise render in the screenshot. Save & blank them
-      // (and any text-node descendants of elements that don't have CSS
-      // visibility set on themselves) so the bg image is text-free.
+
+      // Hide every element under scope that isn't on the path and isn't a
+      // descendant of el. We preserve layout (visibility:hidden, not display)
+      // so el's bbox doesn't shift between hide → screenshot → restore.
+      const hidden = [];
+      const all = scope.querySelectorAll("*");
+      for (const node of all) {
+        if (path.has(node)) continue;
+        if (el.contains(node)) continue;
+        hidden.push([node, node.style.visibility]);
+        node.style.visibility = "hidden";
+      }
+      el.__htmp_hiddenSiblings = hidden;
+
+      // Blank any text nodes inside el (rare — gradient overlays are usually
+      // empty divs — but safe to handle).
       const textNodes = [];
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
       let n;
@@ -757,19 +779,20 @@ async function main() {
         }
       }
       el.__htmp_savedTextNodes = textNodes;
-    });
+    }, slideHandle);
+
     let buf;
     try {
       buf = await handle.screenshot({ type: "png" });
     } finally {
       await handle.evaluate((el) => {
-        const all = el.querySelectorAll("*");
-        for (const d of all) {
-          const prev = d.getAttribute("data-htmp-pv");
-          if (prev === "__unset__" || prev === null) d.style.removeProperty("visibility");
-          else d.style.visibility = prev;
-          d.removeAttribute("data-htmp-pv");
+        const hidden = el.__htmp_hiddenSiblings || [];
+        for (const [node, prev] of hidden) {
+          if (prev) node.style.visibility = prev;
+          else node.style.removeProperty("visibility");
         }
+        delete el.__htmp_hiddenSiblings;
+
         const saved = el.__htmp_savedTextNodes || [];
         for (const [node, text] of saved) {
           node.textContent = text;
@@ -810,7 +833,7 @@ async function main() {
       try {
         const handle = await page.$(`[data-htmp-grad="${gid}"]`);
         if (!handle) continue;
-        const buf = await screenshotBackgroundOnly(handle);
+        const buf = await screenshotBackgroundOnly(handle, slide);
         const dataUrl = "data:image/png;base64," + Buffer.from(buf).toString("base64");
         if (gid === sd.backgroundGradientId) {
           sd.backgroundImageDataUrl = dataUrl;
