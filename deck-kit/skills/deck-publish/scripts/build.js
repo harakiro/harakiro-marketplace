@@ -569,29 +569,47 @@ async function fixContentTypes(pptxPath) {
     }
   }
 
-  // -------- (6) Collapse <p:cNvPr ...>WHITESPACE</p:cNvPr> to self-closing
-  // CT_NonVisualDrawingProps in the schema allows only element children
-  // (hlinkClick?, hlinkHover?, extLst?) — no text content. pptxgenjs emits
-  // these as `<p:cNvPr id="2" name="Image 0" descr="preencoded.png">    </p:cNvPr>`
-  // (whitespace-only content). PowerPoint's repair collapses every one of
-  // them to self-closing. Confirmed on slide1: 7 whitespace-content cNvPr
-  // in v7 vs 0 in repaired-v7. Do this across every slide/master XML.
-  let cnvprCollapsed = 0;
+  // -------- (6) Self-close every empty open-close pair across all XML files
+  // pptxgenjs emits LOTS of empty elements as <tag attrs></tag> (and a few
+  // as <tag attrs>WHITESPACE</tag>). The OOXML schemas for many of these
+  // (CT_NonVisualDrawingProps, CT_NonVisualPictureProperties, CT_AVLst,
+  // CT_TextBodyProperties, etc.) are element-only content models — mixed
+  // text content is not in the spec. Comparing v9 against PowerPoint's
+  // repaired-v9 on slide1 shows 73 empty open-close pairs in v9 vs ZERO
+  // in repaired: p:nvPr (20), p:cNvPr (13), a:ln (12), a:avLst (11),
+  // a:bodyPr (10), a:blip (7). PowerPoint normalizes every one to
+  // self-closing during repair.
+  //
+  // XML-equivalence: <tag attrs></tag> and <tag attrs/> are identical for
+  // any element. This is a safe cosmetic transform — but evidently one
+  // PowerPoint cares about for accepting the file without repair.
+  let pairsCollapsed = 0;
+  let pairsCollapsedFiles = 0;
   for (const filename of Object.keys(zip.files)) {
     if (!/\.xml$/.test(filename)) continue;
     if (filename === ctName) continue;
     let xml = await zip.file(filename).async("string");
-    const newXml = xml.replace(
-      /(<p:cNvPr\b[^>]*[^/])>\s+<\/p:cNvPr>/g,
-      "$1/>"
+    let count = 0;
+    // Collapse <tag attrs?>(whitespace?)</tag> to <tag attrs?/>. Non-greedy
+    // attrs match prevents the regex from eating element content. Allowing
+    // zero-attr matches catches <p:nvPr></p:nvPr> (no attrs, no children).
+    xml = xml.replace(
+      /<([a-zA-Z][\w:]*)([^>]*?)>\s*<\/\1>/g,
+      (_m, tag, attrs) => {
+        // Skip if attrs already self-close (`<tag/>` would have attrs=='')
+        // — actually impossible here since the regex required `>` after attrs.
+        count++;
+        return `<${tag}${attrs}/>`;
+      }
     );
-    if (newXml !== xml) {
-      cnvprCollapsed++;
-      zip.file(filename, newXml);
+    if (count > 0) {
+      pairsCollapsed += count;
+      pairsCollapsedFiles++;
+      zip.file(filename, xml);
     }
   }
-  if (cnvprCollapsed > 0) {
-    console.error(`Collapsed whitespace cNvPr in ${cnvprCollapsed} XML file(s)`);
+  if (pairsCollapsed > 0) {
+    console.error(`Collapsed ${pairsCollapsed} empty open-close pair(s) across ${pairsCollapsedFiles} XML file(s)`);
     dirty = true;
   }
 
