@@ -419,7 +419,43 @@ async function main() {
   }
 
   await pres.writeFile({ fileName: args.out });
+  await fixContentTypes(args.out);
   console.error(`Wrote ${args.out}`);
+}
+
+// pptxgenjs has a known bug: it emits one <Override PartName="/ppt/
+// slideMasters/slideMasterN.xml"> per slide, but only writes slideMaster1.xml
+// to the archive. PowerPoint sees the dangling declarations, flags the file
+// as damaged, and offers to repair on open. Post-process [Content_Types].xml
+// to drop overrides for slide-master parts that aren't actually in the zip.
+async function fixContentTypes(pptxPath) {
+  const JSZip = require("jszip");
+  const buf = fs.readFileSync(pptxPath);
+  const zip = await JSZip.loadAsync(buf);
+  const ctName = "[Content_Types].xml";
+  const ctFile = zip.file(ctName);
+  if (!ctFile) return;
+
+  const present = new Set(Object.keys(zip.files));
+  let ct = await ctFile.async("string");
+
+  let changed = 0;
+  ct = ct.replace(/<Override\s+PartName="([^"]+)"[^>]*\/>/g, (match, part) => {
+    // PartName starts with "/", zip paths don't — strip the leading slash.
+    const zipPath = part.replace(/^\//, "");
+    if (!present.has(zipPath)) {
+      changed++;
+      return "";
+    }
+    return match;
+  });
+
+  if (changed > 0) {
+    zip.file(ctName, ct);
+    const out = await zip.generateAsync({ type: "nodebuffer" });
+    fs.writeFileSync(pptxPath, out);
+    console.error(`Stripped ${changed} dangling Override(s) from [Content_Types].xml`);
+  }
 }
 
 // ---- Brand overlay helpers -------------------------------------------------
