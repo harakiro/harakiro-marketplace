@@ -440,8 +440,16 @@ async function main() {
 //      sldMasterIdLst → notesMasterIdLst → handoutMasterIdLst → sldIdLst →
 //      sldSz → notesSz → ... Move notesMasterIdLst before sldIdLst.
 //   4. notesSlide{N}.xml contains an empty <a:r><a:rPr lang="en-US"
-//      dirty="0"/><a:t/></a:r> in every notes slide. Empty runs with
-//      self-closed <a:t/> are flagged as invalid. Strip them.
+//      dirty="0"/><a:t></a:t></a:r> in every notes slide. Empty runs are
+//      flagged as invalid. Strip them.
+//   5. slideMaster1.xml is missing <p:bg>. The schema for <p:sldMaster>/
+//      <p:cSld> requires it. Inject a default <p:bgRef idx="1001"/>.
+//   6. Slide XMLs (and others) have <p:cNvPr ...>    </p:cNvPr> with
+//      whitespace-only content. CT_NonVisualDrawingProps is element-only;
+//      collapse to self-closing <p:cNvPr .../>.
+//
+// Inferred by diffing v7 against PowerPoint's repaired-v7 to see exactly
+// which bytes PowerPoint considered worth changing.
 async function fixContentTypes(pptxPath) {
   const JSZip = require("jszip");
   const buf = fs.readFileSync(pptxPath);
@@ -561,16 +569,29 @@ async function fixContentTypes(pptxPath) {
     }
   }
 
-  // -------- (6) Replace bloated notesMaster1.xml with a clean minimal version
-  // pptxgenjs emits a notes master full of placeholder shapes (Header, Date,
-  // Slide Image, Body, Footer, Slide Number), most with hardcoded sample
-  // content like "7/23/19" in the date placeholder. PowerPoint's repair
-  // strips ALL of them and synthesizes a fresh empty spTree + a complete
-  // <p:notesStyle> with nine paragraph levels. Match that structure.
-  const notesMasterPath = "ppt/notesMasters/notesMaster1.xml";
-  if (zip.file(notesMasterPath)) {
-    zip.file(notesMasterPath, CLEAN_NOTES_MASTER_XML);
-    console.error("Replaced notesMaster1.xml with a minimal valid version");
+  // -------- (6) Collapse <p:cNvPr ...>WHITESPACE</p:cNvPr> to self-closing
+  // CT_NonVisualDrawingProps in the schema allows only element children
+  // (hlinkClick?, hlinkHover?, extLst?) — no text content. pptxgenjs emits
+  // these as `<p:cNvPr id="2" name="Image 0" descr="preencoded.png">    </p:cNvPr>`
+  // (whitespace-only content). PowerPoint's repair collapses every one of
+  // them to self-closing. Confirmed on slide1: 7 whitespace-content cNvPr
+  // in v7 vs 0 in repaired-v7. Do this across every slide/master XML.
+  let cnvprCollapsed = 0;
+  for (const filename of Object.keys(zip.files)) {
+    if (!/\.xml$/.test(filename)) continue;
+    if (filename === ctName) continue;
+    let xml = await zip.file(filename).async("string");
+    const newXml = xml.replace(
+      /(<p:cNvPr\b[^>]*[^/])>\s+<\/p:cNvPr>/g,
+      "$1/>"
+    );
+    if (newXml !== xml) {
+      cnvprCollapsed++;
+      zip.file(filename, newXml);
+    }
+  }
+  if (cnvprCollapsed > 0) {
+    console.error(`Collapsed whitespace cNvPr in ${cnvprCollapsed} XML file(s)`);
     dirty = true;
   }
 
@@ -580,34 +601,6 @@ async function fixContentTypes(pptxPath) {
   }
 }
 
-// Minimal valid notes master, modeled on what PowerPoint's repair pass
-// emits when it encounters pptxgenjs's bloated version. Empty spTree (just
-// the required group), full <p:clrMap>, and a complete 9-level <p:notesStyle>.
-const CLEAN_NOTES_MASTER_XML =
-  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-  '<p:notesMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">' +
-    '<p:cSld>' +
-      '<p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg>' +
-      '<p:spTree>' +
-        '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
-        '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
-      '</p:spTree>' +
-    '</p:cSld>' +
-    '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>' +
-    '<p:notesStyle>' +
-      [0, 457200, 914400, 1371600, 1828800, 2286000, 2743200, 3200400, 3657600]
-        .map((marL, i) =>
-          `<a:lvl${i + 1}pPr marL="${marL}" algn="l" defTabSz="914400" rtl="0" eaLnBrk="1" latinLnBrk="0" hangingPunct="1">` +
-            '<a:defRPr sz="1200" kern="1200">' +
-              '<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>' +
-              '<a:latin typeface="+mn-lt"/>' +
-              '<a:ea typeface="+mn-ea"/>' +
-              '<a:cs typeface="+mn-cs"/>' +
-            '</a:defRPr>' +
-          `</a:lvl${i + 1}pPr>`
-        ).join('') +
-    '</p:notesStyle>' +
-  '</p:notesMaster>';
 
 // ---- Brand overlay helpers -------------------------------------------------
 
