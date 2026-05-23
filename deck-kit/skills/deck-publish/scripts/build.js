@@ -426,7 +426,8 @@ async function main() {
 // Post-process the PPTX zip to clean up pptxgenjs's known structural quirks
 // that cause PowerPoint to flag the file as damaged on open.
 //
-// Two issues fixed here:
+// Issues fixed here, each discovered by diffing v_n vs PowerPoint's repaired
+// version of v_n:
 //   1. pptxgenjs emits one <Override PartName=".../slideMasterN.xml"/> per
 //      slide in [Content_Types].xml, but only writes slideMaster1.xml. Drop
 //      any Override whose PartName isn't an actual entry in the zip.
@@ -434,6 +435,13 @@ async function main() {
 //      file the slide master owns. PowerPoint expects each master to have
 //      its own theme. Create theme2.xml as a copy of theme1.xml, repoint
 //      the notes master rels there, and declare it in [Content_Types].xml.
+//   3. presentation.xml emits <p:notesMasterIdLst> AFTER <p:sldIdLst>. The
+//      OOXML schema for <p:presentation> requires the strict order
+//      sldMasterIdLst → notesMasterIdLst → handoutMasterIdLst → sldIdLst →
+//      sldSz → notesSz → ... Move notesMasterIdLst before sldIdLst.
+//   4. notesSlide{N}.xml contains an empty <a:r><a:rPr lang="en-US"
+//      dirty="0"/><a:t/></a:r> in every notes slide. Empty runs with
+//      self-closed <a:t/> are flagged as invalid. Strip them.
 async function fixContentTypes(pptxPath) {
   const JSZip = require("jszip");
   const buf = fs.readFileSync(pptxPath);
@@ -493,11 +501,113 @@ async function fixContentTypes(pptxPath) {
     }
   }
 
+  // -------- (3) Reorder notesMasterIdLst before sldIdLst in presentation.xml
+  const presPath = "ppt/presentation.xml";
+  const presFile = zip.file(presPath);
+  if (presFile) {
+    let pres = await presFile.async("string");
+    const sldIdIdx = pres.indexOf("<p:sldIdLst");
+    const notesIdMatch = pres.match(/<p:notesMasterIdLst[\s\S]*?<\/p:notesMasterIdLst>/);
+    if (sldIdIdx >= 0 && notesIdMatch && notesIdMatch.index > sldIdIdx) {
+      const notesBlock = notesIdMatch[0];
+      // Strip the misplaced block, then re-insert before <p:sldIdLst
+      pres = pres.replace(notesBlock, "");
+      pres = pres.replace("<p:sldIdLst", notesBlock + "<p:sldIdLst");
+      zip.file(presPath, pres);
+      console.error("Reordered presentation.xml: notesMasterIdLst → before sldIdLst");
+      dirty = true;
+    }
+  }
+
+  // -------- (4) Strip empty runs from notesSlide{N}.xml ---------------------
+  const notesSlidePaths = Object.keys(zip.files).filter((p) =>
+    /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(p)
+  );
+  let strippedRuns = 0;
+  for (const p of notesSlidePaths) {
+    let ns = await zip.file(p).async("string");
+    const before = ns.length;
+    // Strip empty runs — either form: <a:t/> or <a:t></a:t>
+    ns = ns.replace(
+      /<a:r>\s*<a:rPr[^/]*\/>\s*<a:t\s*(?:\/>|><\/a:t>)\s*<\/a:r>/g,
+      ""
+    );
+    if (ns.length !== before) {
+      zip.file(p, ns);
+      strippedRuns++;
+    }
+  }
+  if (strippedRuns > 0) {
+    console.error(`Stripped empty <a:t/> runs from ${strippedRuns} notesSlide(s)`);
+    dirty = true;
+  }
+
+  // -------- (5) Add <p:bg> to slideMaster1.xml if missing ------------------
+  // The OOXML schema for slideMaster's <p:cSld> requires a <p:bg> element
+  // (or it must explicitly inherit from elsewhere). pptxgenjs omits it and
+  // PowerPoint's repair injects a default <p:bgRef idx="1001"/>.
+  const sldMasterPath = "ppt/slideMasters/slideMaster1.xml";
+  const sldMasterFile = zip.file(sldMasterPath);
+  if (sldMasterFile) {
+    let sm = await sldMasterFile.async("string");
+    if (!sm.includes("<p:bg>") && !sm.includes("<p:bg/>")) {
+      const bgBlock =
+        '<p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg>';
+      // Inject right after <p:cSld>
+      sm = sm.replace("<p:cSld>", "<p:cSld>" + bgBlock);
+      zip.file(sldMasterPath, sm);
+      console.error("Injected <p:bg> into slideMaster1.xml");
+      dirty = true;
+    }
+  }
+
+  // -------- (6) Replace bloated notesMaster1.xml with a clean minimal version
+  // pptxgenjs emits a notes master full of placeholder shapes (Header, Date,
+  // Slide Image, Body, Footer, Slide Number), most with hardcoded sample
+  // content like "7/23/19" in the date placeholder. PowerPoint's repair
+  // strips ALL of them and synthesizes a fresh empty spTree + a complete
+  // <p:notesStyle> with nine paragraph levels. Match that structure.
+  const notesMasterPath = "ppt/notesMasters/notesMaster1.xml";
+  if (zip.file(notesMasterPath)) {
+    zip.file(notesMasterPath, CLEAN_NOTES_MASTER_XML);
+    console.error("Replaced notesMaster1.xml with a minimal valid version");
+    dirty = true;
+  }
+
   if (dirty) {
     const out = await zip.generateAsync({ type: "nodebuffer" });
     fs.writeFileSync(pptxPath, out);
   }
 }
+
+// Minimal valid notes master, modeled on what PowerPoint's repair pass
+// emits when it encounters pptxgenjs's bloated version. Empty spTree (just
+// the required group), full <p:clrMap>, and a complete 9-level <p:notesStyle>.
+const CLEAN_NOTES_MASTER_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<p:notesMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">' +
+    '<p:cSld>' +
+      '<p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg>' +
+      '<p:spTree>' +
+        '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
+        '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
+      '</p:spTree>' +
+    '</p:cSld>' +
+    '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>' +
+    '<p:notesStyle>' +
+      [0, 457200, 914400, 1371600, 1828800, 2286000, 2743200, 3200400, 3657600]
+        .map((marL, i) =>
+          `<a:lvl${i + 1}pPr marL="${marL}" algn="l" defTabSz="914400" rtl="0" eaLnBrk="1" latinLnBrk="0" hangingPunct="1">` +
+            '<a:defRPr sz="1200" kern="1200">' +
+              '<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>' +
+              '<a:latin typeface="+mn-lt"/>' +
+              '<a:ea typeface="+mn-ea"/>' +
+              '<a:cs typeface="+mn-cs"/>' +
+            '</a:defRPr>' +
+          `</a:lvl${i + 1}pPr>`
+        ).join('') +
+    '</p:notesStyle>' +
+  '</p:notesMaster>';
 
 // ---- Brand overlay helpers -------------------------------------------------
 
