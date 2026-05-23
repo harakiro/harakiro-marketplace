@@ -423,38 +423,79 @@ async function main() {
   console.error(`Wrote ${args.out}`);
 }
 
-// pptxgenjs has a known bug: it emits one <Override PartName="/ppt/
-// slideMasters/slideMasterN.xml"> per slide, but only writes slideMaster1.xml
-// to the archive. PowerPoint sees the dangling declarations, flags the file
-// as damaged, and offers to repair on open. Post-process [Content_Types].xml
-// to drop overrides for slide-master parts that aren't actually in the zip.
+// Post-process the PPTX zip to clean up pptxgenjs's known structural quirks
+// that cause PowerPoint to flag the file as damaged on open.
+//
+// Two issues fixed here:
+//   1. pptxgenjs emits one <Override PartName=".../slideMasterN.xml"/> per
+//      slide in [Content_Types].xml, but only writes slideMaster1.xml. Drop
+//      any Override whose PartName isn't an actual entry in the zip.
+//   2. pptxgenjs points notesMaster1.xml.rels at theme1.xml — the same theme
+//      file the slide master owns. PowerPoint expects each master to have
+//      its own theme. Create theme2.xml as a copy of theme1.xml, repoint
+//      the notes master rels there, and declare it in [Content_Types].xml.
 async function fixContentTypes(pptxPath) {
   const JSZip = require("jszip");
   const buf = fs.readFileSync(pptxPath);
   const zip = await JSZip.loadAsync(buf);
+  let dirty = false;
+
+  // -------- (1) Strip Overrides for parts that aren't in the zip --------
   const ctName = "[Content_Types].xml";
   const ctFile = zip.file(ctName);
-  if (!ctFile) return;
+  if (ctFile) {
+    const present = new Set(Object.keys(zip.files));
+    let ct = await ctFile.async("string");
 
-  const present = new Set(Object.keys(zip.files));
-  let ct = await ctFile.async("string");
+    let stripped = 0;
+    ct = ct.replace(/<Override\s+PartName="([^"]+)"[^>]*\/>/g, (match, part) => {
+      const zipPath = part.replace(/^\//, "");
+      if (!present.has(zipPath)) {
+        stripped++;
+        return "";
+      }
+      return match;
+    });
 
-  let changed = 0;
-  ct = ct.replace(/<Override\s+PartName="([^"]+)"[^>]*\/>/g, (match, part) => {
-    // PartName starts with "/", zip paths don't — strip the leading slash.
-    const zipPath = part.replace(/^\//, "");
-    if (!present.has(zipPath)) {
-      changed++;
-      return "";
+    if (stripped > 0) {
+      zip.file(ctName, ct);
+      console.error(`Stripped ${stripped} dangling Override(s) from [Content_Types].xml`);
+      dirty = true;
     }
-    return match;
-  });
+  }
 
-  if (changed > 0) {
-    zip.file(ctName, ct);
+  // -------- (2) Give notesMaster1 its own theme (theme2.xml) -----------
+  const notesRelsPath = "ppt/notesMasters/_rels/notesMaster1.xml.rels";
+  const themeOnePath = "ppt/theme/theme1.xml";
+  const themeTwoPath = "ppt/theme/theme2.xml";
+  const notesRelsFile = zip.file(notesRelsPath);
+  if (notesRelsFile && !zip.file(themeTwoPath)) {
+    let rels = await notesRelsFile.async("string");
+    if (rels.includes('Target="../theme/theme1.xml"')) {
+      // Copy theme1 → theme2
+      const theme1 = await zip.file(themeOnePath).async("string");
+      zip.file(themeTwoPath, theme1);
+
+      // Repoint the notes master at the new theme
+      rels = rels.replace('Target="../theme/theme1.xml"', 'Target="../theme/theme2.xml"');
+      zip.file(notesRelsPath, rels);
+
+      // Declare theme2 in [Content_Types].xml
+      let ct = await zip.file(ctName).async("string");
+      const theme2Override =
+        '<Override PartName="/ppt/theme/theme2.xml" ' +
+        'ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>';
+      ct = ct.replace("</Types>", theme2Override + "</Types>");
+      zip.file(ctName, ct);
+
+      console.error("Added theme2.xml for notesMaster1 (was sharing theme1)");
+      dirty = true;
+    }
+  }
+
+  if (dirty) {
     const out = await zip.generateAsync({ type: "nodebuffer" });
     fs.writeFileSync(pptxPath, out);
-    console.error(`Stripped ${changed} dangling Override(s) from [Content_Types].xml`);
   }
 }
 
