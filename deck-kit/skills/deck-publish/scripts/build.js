@@ -590,14 +590,19 @@ async function fixContentTypes(pptxPath) {
     if (filename === ctName) continue;
     let xml = await zip.file(filename).async("string");
     let count = 0;
-    // Collapse <tag attrs?>(whitespace?)</tag> to <tag attrs?/>. Non-greedy
-    // attrs match prevents the regex from eating element content. Allowing
-    // zero-attr matches catches <p:nvPr></p:nvPr> (no attrs, no children).
+    // Collapse <tag attrs?>(whitespace?)</tag> to <tag attrs?/>.
+    //
+    // CRITICAL: the (?![\w:]) negative lookahead anchors the tag-name
+    // match. Without it the regex engine backtracks the tag name when the
+    // \1 backreference fails to find a matching closing tag. Example:
+    //   input:  <p:spPr/></p:sp><p:sp>...
+    //   bad:    tag=`p:sp`, attrs=`Pr/`, finds </p:sp>, produces <p:spPr//>
+    //           (invalid XML — parser breaks on `//>` → PowerPoint flags damage)
+    // The lookahead forces tag to consume all consecutive name chars so
+    // it can't shrink to a prefix that happens to be a valid close-tag.
     xml = xml.replace(
-      /<([a-zA-Z][\w:]*)([^>]*?)>\s*<\/\1>/g,
+      /<([a-zA-Z][\w:]*)(?![\w:])([^>]*?)>\s*<\/\1>/g,
       (_m, tag, attrs) => {
-        // Skip if attrs already self-close (`<tag/>` would have attrs=='')
-        // — actually impossible here since the regex required `>` after attrs.
         count++;
         return `<${tag}${attrs}/>`;
       }
@@ -610,6 +615,32 @@ async function fixContentTypes(pptxPath) {
   }
   if (pairsCollapsed > 0) {
     console.error(`Collapsed ${pairsCollapsed} empty open-close pair(s) across ${pairsCollapsedFiles} XML file(s)`);
+    dirty = true;
+  }
+
+  // -------- (7) Fix unescaped `&` in docProps (and other XML files) --------
+  // pptxgenjs writes pres.title / pres.author / pres.company directly into
+  // docProps/app.xml and docProps/core.xml WITHOUT XML-escaping. A brand
+  // value like "Creed & Iron Construction, LLC" lands in the XML as a raw
+  // `&`, which makes the file unparseable XML. PowerPoint flags this as
+  // damaged. Defensively scan every XML file and replace any `&` not
+  // already part of an entity reference with `&amp;`.
+  let ampsFixed = 0;
+  for (const filename of Object.keys(zip.files)) {
+    if (!/\.xml$/.test(filename)) continue;
+    let xml = await zip.file(filename).async("string");
+    let fileCount = 0;
+    const newXml = xml.replace(/&(?!(?:#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);)/g, () => {
+      fileCount++;
+      return "&amp;";
+    });
+    if (fileCount > 0) {
+      ampsFixed += fileCount;
+      zip.file(filename, newXml);
+    }
+  }
+  if (ampsFixed > 0) {
+    console.error(`Fixed ${ampsFixed} unescaped '&' across XML files`);
     dirty = true;
   }
 
