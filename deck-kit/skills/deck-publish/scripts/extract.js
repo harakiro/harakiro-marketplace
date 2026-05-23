@@ -730,20 +730,38 @@ async function main() {
 
   const data = await page.evaluate(extractInPage, selector);
 
-  // Helper: screenshot an element capturing only its own background/gradient,
-  // with no overlapping foreground content baked in. The element's bbox often
-  // covers the whole slide (e.g. a position:absolute .noise overlay with
-  // inset:0), so we can't just hide descendants — siblings and cousins inside
-  // the slide render INSIDE the bbox at higher z-index and would otherwise
-  // bake their text into the screenshot, producing visible duplication when
-  // editable text layers are overlaid in the PPTX.
+  // Helper: screenshot an element in isolation — visible inside the slide,
+  // but with siblings/cousins hidden so nothing else bakes into the image.
   //
-  // Strategy: walk up from `el` to its containing slide. Hide every element
-  // inside the slide that is NOT on the el → slide ancestor path AND NOT a
+  // Why: element bboxes routinely cover most or all of the slide
+  //   - `<div class="noise" style="position:absolute; inset:0">` (gradient)
+  //   - `<div class="shield-wm" style="width:430px; height:470px;">` (SVG watermark)
+  // These sit at low z-index; higher-z foreground text (cover-inner, footer,
+  // badges) renders INSIDE their bbox. A raw element.screenshot() captures
+  // the rendered page cropped to the bbox, so that foreground text ends up
+  // baked into the "background" image. Then editable text layers placed on
+  // top produce visible duplication.
+  //
+  // Strategy: walk up from `el` to its containing slide; hide every element
+  // under the slide that isn't on the el → slide ancestor path AND isn't a
   // descendant of `el`. The slide root stays visible so its background color
-  // shows through any alpha in the gradient.
-  async function screenshotBackgroundOnly(handle, slideHandle) {
-    await handle.evaluate((el, slide) => {
+  // shows through (important for alpha gradients).
+  //
+  // Options:
+  //   clearOwnText (default true) — also blank text nodes inside `el`.
+  //     True for gradient overlays (we don't want their text in the image
+  //     because it'll re-appear as editable text). False for SVGs (their
+  //     <text> elements ARE the content).
+  //   omitBackground (default false) — pass-through to handle.screenshot().
+  //     True for SVGs so the PNG has transparent rather than white pixels
+  //     wherever the SVG didn't paint.
+  async function screenshotIsolated(handle, slideHandle, opts) {
+    const { clearOwnText = true, omitBackground = false } = opts || {};
+
+    // NOTE: Puppeteer only translates ElementHandle args at top-level. Pass
+    // the slide handle as its OWN positional arg, not nested in an options
+    // object — otherwise it gets serialized as `{}` and we lose the element.
+    await handle.evaluate((el, slide, clearOwnText) => {
       const scope = slide || document.body;
 
       // Build the el → scope ancestor path (inclusive on both ends).
@@ -755,8 +773,8 @@ async function main() {
       }
 
       // Hide every element under scope that isn't on the path and isn't a
-      // descendant of el. We preserve layout (visibility:hidden, not display)
-      // so el's bbox doesn't shift between hide → screenshot → restore.
+      // descendant of el. visibility:hidden (not display:none) preserves
+      // layout so el's bbox doesn't shift.
       const hidden = [];
       const all = scope.querySelectorAll("*");
       for (const node of all) {
@@ -767,23 +785,23 @@ async function main() {
       }
       el.__htmp_hiddenSiblings = hidden;
 
-      // Blank any text nodes inside el (rare — gradient overlays are usually
-      // empty divs — but safe to handle).
-      const textNodes = [];
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-      let n;
-      while ((n = walker.nextNode())) {
-        if (n.textContent && n.textContent.length) {
-          textNodes.push([n, n.textContent]);
-          n.textContent = "";
+      if (clearOwnText) {
+        const textNodes = [];
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+        let n;
+        while ((n = walker.nextNode())) {
+          if (n.textContent && n.textContent.length) {
+            textNodes.push([n, n.textContent]);
+            n.textContent = "";
+          }
         }
+        el.__htmp_savedTextNodes = textNodes;
       }
-      el.__htmp_savedTextNodes = textNodes;
-    }, slideHandle);
+    }, slideHandle, clearOwnText);
 
     let buf;
     try {
-      buf = await handle.screenshot({ type: "png" });
+      buf = await handle.screenshot({ type: "png", omitBackground });
     } finally {
       await handle.evaluate((el) => {
         const hidden = el.__htmp_hiddenSiblings || [];
@@ -810,11 +828,18 @@ async function main() {
     const slide = slideHandles[i];
 
     // --- SVGs (match by DOM order to svg layers) ---
+    // Use isolation so foreground text that overlaps the SVG's bbox doesn't
+    // bake into the screenshot. The shield watermark on this deck has
+    // z-index:0 and covers 430x470 of the 960x540 slide — cover-inner text
+    // at z-index:4 would otherwise render into its screenshot.
     const svgHandles = await slide.$$("svg");
     const svgLayers = data.slides[i].layers.filter((l) => l.type === "svg");
     for (let k = 0; k < svgLayers.length && k < svgHandles.length; k++) {
       try {
-        const buf = await svgHandles[k].screenshot({ omitBackground: true, type: "png" });
+        const buf = await screenshotIsolated(svgHandles[k], slide, {
+          clearOwnText: false,
+          omitBackground: true,
+        });
         svgLayers[k].dataUrl = "data:image/png;base64," + Buffer.from(buf).toString("base64");
       } catch (e) {
         svgLayers[k].error = String(e.message || e);
@@ -833,7 +858,7 @@ async function main() {
       try {
         const handle = await page.$(`[data-htmp-grad="${gid}"]`);
         if (!handle) continue;
-        const buf = await screenshotBackgroundOnly(handle, slide);
+        const buf = await screenshotIsolated(handle, slide, { clearOwnText: true });
         const dataUrl = "data:image/png;base64," + Buffer.from(buf).toString("base64");
         if (gid === sd.backgroundGradientId) {
           sd.backgroundImageDataUrl = dataUrl;
