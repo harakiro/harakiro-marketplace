@@ -293,8 +293,19 @@ function extractInPage(selector) {
       boxTop = elRect.top;
       boxBottom = elRect.bottom;
       alignFinal = "center";
-    } else if (align === "center" || align === "right" || align === "justify") {
-      // Use the element's content box horizontally
+    } else if (
+      !/^(flex|grid|inline-flex|inline-grid)$/.test(cs.display) &&
+      (align === "center" || align === "right" || align === "justify")
+    ) {
+      // For non-flex/grid block elements with center/right/justify text-align,
+      // widen the text box to the element's full content area so PowerPoint
+      // can apply the same alignment.
+      //
+      // Skip for flex/grid containers: layout there is controlled by flex/grid
+      // rules, not text-align. text-align="center" inside a flex row with an
+      // icon + text would otherwise widen the text box across the icon's
+      // position, overlapping it in the rendered PPTX. Keep the measured
+      // text rect instead.
       boxLeft = elRect.left + padL;
       boxRight = elRect.right - padR;
     }
@@ -387,7 +398,10 @@ function extractInPage(selector) {
       boxTop = elRect.top;
       boxBottom = elRect.bottom;
       alignFinal = "center";
-    } else if (align === "center" || align === "right" || align === "justify") {
+    } else if (
+      !/^(flex|grid|inline-flex|inline-grid)$/.test(cs.display) &&
+      (align === "center" || align === "right" || align === "justify")
+    ) {
       boxLeft = elRect.left + padL;
       boxRight = elRect.right - padR;
     }
