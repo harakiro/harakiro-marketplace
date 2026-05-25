@@ -762,20 +762,29 @@ async function main() {
   // shows through (important for alpha gradients).
   //
   // Options:
-  //   clearOwnText (default true) — also blank text nodes inside `el`.
-  //     True for gradient overlays (we don't want their text in the image
-  //     because it'll re-appear as editable text). False for SVGs (their
-  //     <text> elements ARE the content).
+  //   clearOwnText (default true) — blank text nodes inside `el`.
+  //     True for gradient overlays. False for SVGs (their <text> are content).
+  //   hideDescendants (default false) — also hide element descendants of
+  //     `el`. Use true for BACKGROUND captures: we want only el's own paint
+  //     (background, border) with no children rendering. Without this, the
+  //     slide-root gradient capture includes every child shape/image/icon,
+  //     and they re-appear when editable layers draw on top — visible
+  //     duplication with slight position drift. Leave false for SVG
+  //     captures so the SVG's paths/circles/rects remain visible.
   //   omitBackground (default false) — pass-through to handle.screenshot().
   //     True for SVGs so the PNG has transparent rather than white pixels
   //     wherever the SVG didn't paint.
   async function screenshotIsolated(handle, slideHandle, opts) {
-    const { clearOwnText = true, omitBackground = false } = opts || {};
+    const {
+      clearOwnText = true,
+      hideDescendants = false,
+      omitBackground = false,
+    } = opts || {};
 
     // NOTE: Puppeteer only translates ElementHandle args at top-level. Pass
     // the slide handle as its OWN positional arg, not nested in an options
     // object — otherwise it gets serialized as `{}` and we lose the element.
-    await handle.evaluate((el, slide, clearOwnText) => {
+    await handle.evaluate((el, slide, clearOwnText, hideDescendants) => {
       const scope = slide || document.body;
 
       // Build the el → scope ancestor path (inclusive on both ends).
@@ -788,12 +797,14 @@ async function main() {
 
       // Hide every element under scope that isn't on the path and isn't a
       // descendant of el. visibility:hidden (not display:none) preserves
-      // layout so el's bbox doesn't shift.
+      // layout so el's bbox doesn't shift. When hideDescendants is true,
+      // also hide everything inside el (so only its own paint renders).
       const hidden = [];
       const all = scope.querySelectorAll("*");
       for (const node of all) {
         if (path.has(node)) continue;
-        if (el.contains(node)) continue;
+        if (!hideDescendants && el.contains(node)) continue;
+        if (node === el) continue; // never hide el itself
         hidden.push([node, node.style.visibility]);
         node.style.visibility = "hidden";
       }
@@ -811,7 +822,7 @@ async function main() {
         }
         el.__htmp_savedTextNodes = textNodes;
       }
-    }, slideHandle, clearOwnText);
+    }, slideHandle, clearOwnText, hideDescendants);
 
     let buf;
     try {
@@ -872,7 +883,14 @@ async function main() {
       try {
         const handle = await page.$(`[data-htmp-grad="${gid}"]`);
         if (!handle) continue;
-        const buf = await screenshotIsolated(handle, slide, { clearOwnText: true });
+        const buf = await screenshotIsolated(handle, slide, {
+          clearOwnText: true,
+          // Background captures: render only the element's own paint
+          // (gradient/border). Without this, capturing the slide root's
+          // background gradient also captures all the slide's content,
+          // which then gets duplicated when editable layers draw on top.
+          hideDescendants: true,
+        });
         const dataUrl = "data:image/png;base64," + Buffer.from(buf).toString("base64");
         if (gid === sd.backgroundGradientId) {
           sd.backgroundImageDataUrl = dataUrl;
