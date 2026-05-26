@@ -1,6 +1,6 @@
 # Harakiro Plugins
 
-A Claude Code plugin marketplace.
+A plugin marketplace for **Claude Code** and **GitHub Copilot CLI**.
 
 ## Installation
 
@@ -10,13 +10,17 @@ A Claude Code plugin marketplace.
 
 # Install plugins
 /plugin install ralph@harakiro-marketplace
+/plugin install deck-kit@harakiro-marketplace
 ```
+
+The same commands work in both `claude` and `copilot`.
 
 ## Available Plugins
 
 | Plugin | Description | Models |
 |--------|-------------|--------|
 | [ralph](./ralph) | Automated AI development loop | Opus, Sonnet, Haiku |
+| [deck-kit](./deck-kit) | Branded HTML → PPTX/PDF presentation toolkit | Session |
 
 ---
 
@@ -53,6 +57,44 @@ Automates feature development through Task agents. Plan with Opus, build with So
 ```
 
 See [ralph/README.md](./ralph/README.md) for detailed documentation.
+
+---
+
+## Deck Kit
+
+Author presentation decks as a single self-contained HTML file, then publish to PowerPoint or PDF. Brand-aware: a `brand/brand.yaml` drives colors, type, layout, logo, and footers so every deck comes out on-brand. Works identically in Claude Code and Copilot CLI from one source tree.
+
+### Skills
+
+| Skill | Purpose |
+|---|---|
+| `/deck-brand-init` | Scaffold `brand/brand.yaml` (identity, colors, typography, layout, logo, footer). |
+| `/deck-create` | Conversational deck authoring — produces a self-contained `.html` ready to publish. |
+| `/deck-publish` | Convert deck HTML to PDF or PPTX. |
+
+### Publish modes
+
+| Mode | Flag | Output |
+|---|---|---|
+| Screenshot PPTX | _(default)_ | Pixel-perfect — each slide is a rendered image. Highest visual fidelity. |
+| Editable PPTX | `--editable` | Real PowerPoint text boxes, shapes, and tables you can edit natively. |
+| PDF | `--to pdf` | Flat PDF for distribution and archiving. |
+
+The editable converter extracts text, gradients, and SVG/icon layers into native PPTX elements and post-processes the OOXML so the file opens clean in PowerPoint (no "needs repair" dialog).
+
+### Workflow
+
+```
+/deck-brand-init                       # one-time, per project
+/deck-create "Q3 strategy all-hands"   # author the HTML
+/deck-publish deck.html                # screenshot PPTX (default)
+/deck-publish deck.html --editable     # editable PPTX
+/deck-publish deck.html --to pdf       # PDF
+```
+
+**Dependencies self-install.** On the first publish, `deck-publish` detects missing native deps (Puppeteer + pptxgenjs) and runs `npm install` automatically — a one-time ~30–60s wait plus a ~150–200 MB Chromium download. Subsequent runs are instant.
+
+See [deck-kit/README.md](./deck-kit/README.md) for install paths, manual dependency setup, and the source layout.
 
 ---
 
