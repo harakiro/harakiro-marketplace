@@ -1,7 +1,7 @@
 {
   "name": "ralph",
   "description": "Ralph Agent - Iterative development loop for AI coding assistants. Includes ONBOARD, PLAN, BUILD, FEEDBACK, and REVIEW phases.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "author": {
     "name": "harakiro"
   },

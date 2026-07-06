@@ -18,7 +18,7 @@
 | Command | Model | Description |
 |---------|-------|-------------|
 | `/ralph:ralph-init` | Session | Initialize Ralph in current project |
-| `/ralph:ralph-onboard` | Session | Analyze existing codebase, create CLAUDE.md + PRD.md |
+| `/ralph:ralph-onboard` | **Opus** | Analyze existing codebase, create CLAUDE.md + PRD.md |
 | `/ralph:ralph-plan` | **Opus** | Create ROADMAP from PRD or plan next feature |
 | `/ralph:ralph-build` | Session | Implement tasks in the current session (manual) |
 | `/ralph:ralph-loop` | **Sonnet** | **Automated**: build the entire feature via fresh-context Task agents |
@@ -27,7 +27,7 @@
 | `/ralph:ralph-review` | Session | Create FIX tasks from feedback |
 | `/ralph:ralph-status` | Session | Show current progress |
 
-**Model routing:** planning is pinned to Opus (architecture warrants an advanced model), loop build agents are pinned to Sonnet (cost-efficient implementation of well-scoped tasks). Everything else runs inline and inherits the session model.
+**Model routing:** planning and onboarding are pinned to Opus (architecture-class analysis warrants an advanced model), loop build agents are pinned to Sonnet (cost-efficient implementation of well-scoped tasks). Everything else runs inline and inherits the session model.
 
 ## Workflows
 

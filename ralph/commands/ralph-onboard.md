@@ -6,12 +6,16 @@ description: Analyze existing codebase and create foundational documents (CLAUDE
 
 Analyze this existing codebase and create the foundational documents that Ralph needs.
 
+**Model:** Onboarding uses **Opus** — inferring architecture, patterns, and product intent from an unfamiliar codebase is planning-class analysis.
+
 ## Execution
 
-Dispatch an `Explore` agent (read-only, thorough) to scan the codebase:
-structure, tech stack, patterns from 3-5 representative files, existing
-docs. Then write the documents below in the current session using its
-report, and commit.
+Dispatch an `Explore` agent (read-only, thorough, `model: "opus"`) to scan
+the codebase: structure, tech stack, patterns from 3-5 representative
+files, existing docs. Then spawn a Task agent with
+`subagent_type: "general-purpose"` and `model: "opus"` to draft the
+documents below from that report and return their contents. Write the
+returned content to the appropriate files and commit.
 
 ---
 
