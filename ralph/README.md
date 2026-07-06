@@ -15,19 +15,19 @@
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/ralph:ralph-init` | Initialize Ralph in current project |
-| `/ralph:ralph-onboard` | Analyze existing codebase, create CLAUDE.md + PRD.md |
-| `/ralph:ralph-plan` | Create ROADMAP from PRD or plan next feature |
-| `/ralph:ralph-build` | Implement tasks in the current session (manual) |
-| `/ralph:ralph-loop` | **Automated**: build the entire feature via fresh-context Task agents |
-| `/ralph:ralph-cancel` | Cancel an active loop |
-| `/ralph:ralph-feedback` | Parse raw feedback into structured format |
-| `/ralph:ralph-review` | Create FIX tasks from feedback |
-| `/ralph:ralph-status` | Show current progress |
+| Command | Model | Description |
+|---------|-------|-------------|
+| `/ralph:ralph-init` | Session | Initialize Ralph in current project |
+| `/ralph:ralph-onboard` | Session | Analyze existing codebase, create CLAUDE.md + PRD.md |
+| `/ralph:ralph-plan` | **Opus** | Create ROADMAP from PRD or plan next feature |
+| `/ralph:ralph-build` | Session | Implement tasks in the current session (manual) |
+| `/ralph:ralph-loop` | **Sonnet** | **Automated**: build the entire feature via fresh-context Task agents |
+| `/ralph:ralph-cancel` | Session | Cancel an active loop |
+| `/ralph:ralph-feedback` | Session | Parse raw feedback into structured format |
+| `/ralph:ralph-review` | Session | Create FIX tasks from feedback |
+| `/ralph:ralph-status` | Session | Show current progress |
 
-All commands inherit the session model.
+**Model routing:** planning is pinned to Opus (architecture warrants an advanced model), loop build agents are pinned to Sonnet (cost-efficient implementation of well-scoped tasks). Everything else runs inline and inherits the session model.
 
 ## Workflows
 
@@ -58,8 +58,8 @@ All commands inherit the session model.
 
 ### How `/ralph:ralph-loop` Works
 
-The loop dispatches a **Task agent** with fresh context to build the whole
-feature. If an agent stops early (blocker, error), the orchestrator
+The loop dispatches a **Sonnet Task agent** with fresh context to build the
+whole feature. If an agent stops early (blocker, error), the orchestrator
 re-dispatches a new agent with the remaining tasks — iterations are
 failure recovery, not fixed-size batching. Progress is tracked in
 `.ralph/loop-state.json` and `.ralph/progress.txt`, so the loop can resume

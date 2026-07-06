@@ -6,7 +6,7 @@ description: Automatically build entire feature using Task agents for clean cont
 
 Build the current feature to completion using Task agents. By default a single fresh-context agent executes the whole feature; the loop re-dispatches an agent with the remaining tasks only when the previous agent stops early (error or blocker). Iterations are failure recovery, not fixed-size batching.
 
-**Model:** Inherits the session model. Do NOT set a model override when spawning agents.
+**Model:** Build agents use **Sonnet** — implementation work is well-scoped by the plan, so a cost-efficient model fits. The orchestrating loop itself runs in the session.
 
 ## Instructions
 
@@ -41,7 +41,7 @@ Create/update `.ralph/loop-state.json`:
 
 a) Increment `iteration` in loop-state.json
 
-b) Spawn a Task agent with `subagent_type: "general-purpose"` (no model override):
+b) Spawn a Task agent with `subagent_type: "general-purpose"` and `model: "sonnet"`:
 
 ```
 Task: Ralph Build - Iteration {N}

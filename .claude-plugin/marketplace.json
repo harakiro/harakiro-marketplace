@@ -8,7 +8,7 @@
     {
       "name": "ralph",
       "source": "./ralph",
-      "description": "Automated AI development loop — plan, build with fresh-context agents, iterate until done"
+      "description": "Automated AI development loop — plan with Opus, build with fresh-context Sonnet agents, iterate until done"
     },
     {
       "name": "deck-kit",

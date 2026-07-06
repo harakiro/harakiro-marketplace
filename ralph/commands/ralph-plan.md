@@ -6,12 +6,16 @@ description: Create ROADMAP from PRD (first run) or plan the next feature
 
 Plan the next feature by creating architecture and task documents.
 
+**Model:** Planning uses **Opus** — architecture and task decomposition warrant an advanced model regardless of the session default.
+
 ## Execution
 
-Plan directly in the current session — it has the conversation context a
-subagent would lack. For large or unfamiliar codebases, first dispatch an
-`Explore` agent (read-only) to map the relevant modules, then plan with
-its report in hand.
+Spawn a Task agent with `subagent_type: "general-purpose"` and `model: "opus"`
+to perform the planning work below and return the created file contents.
+After it completes, write the returned content to the appropriate files and
+commit. For large or unfamiliar codebases, first dispatch an `Explore` agent
+(read-only) to map the relevant modules and include its report in the
+planning agent's prompt.
 
 ---
 
