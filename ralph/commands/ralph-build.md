@@ -4,22 +4,20 @@ description: Implement the next task from the queue
 
 # Ralph Build - Task Implementation
 
-Implement the next task from the queue, verify it works, commit, and update progress.
+Implement tasks from the queue, verify each works, commit, and update progress.
 
-**For automated feature building, use `/ralph:ralph-loop` instead.**
+**For hands-off feature building with a clean context per run, use `/ralph:ralph-loop` instead.**
 
 ## Build Workflow
 
 ### 1. Read State
 - Read `.ralph/progress.txt` → get current task
 - Read `.ralph/features/FEAT_<feature>.md` → get task details
-- Read `CLAUDE.md` → follow project patterns
+- Read `CLAUDE.md` → follow project patterns and use its documented dev commands
 
 ### 2. Pre-flight Check
-```bash
-pnpm test        # or npm test, pytest, etc.
-pnpm typecheck   # if applicable
-```
+
+Run the project's test and typecheck commands (from CLAUDE.md, e.g. `pnpm test`, `npm test`, `pytest`):
 If either fails, FIX IT FIRST before new work.
 
 ### 3. Implement Task
@@ -28,10 +26,8 @@ If either fails, FIX IT FIRST before new work.
 - Follow project patterns from CLAUDE.md
 
 ### 4. Verify
-```bash
-pnpm test        # ALL tests must pass
-pnpm typecheck   # Zero errors
-```
+
+Re-run the project's test and typecheck commands. ALL tests must pass, zero type errors.
 If anything fails, fix before committing.
 
 ### 5. Commit
@@ -53,7 +49,9 @@ git commit -m "progress: Complete FEAT-001"
 ```
 
 ### 7. Continue or Stop
-- If more tasks in feature: continue to next task (max 2 per invocation)
+- If more tasks remain: continue to the next task. Stop early only if you
+  hit a blocker (failing tests you can't fix, missing information) or the
+  user asked for a specific number of tasks
 - If feature complete: verify all tests pass, report completion
 
 ## Quality Gates
@@ -92,5 +90,3 @@ Commits: [list]
 Feature status: {X of Y tasks done} or COMPLETE
 Next task: FEAT-ZZZ or (none - feature complete)
 ```
-
-Then output `<promise>COMPLETE</promise>`.

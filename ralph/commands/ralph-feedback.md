@@ -103,5 +103,3 @@ Output: .ralph/feedback/<feature>_review_N.md
 
 Next: Run /ralph-review to create fix tasks
 ```
-
-Then output `<promise>COMPLETE</promise>`.

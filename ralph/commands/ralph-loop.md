@@ -4,9 +4,9 @@ description: Automatically build entire feature using Task agents for clean cont
 
 # Ralph Loop - Automated Feature Builder
 
-Build the current feature to completion using Task agents. Each agent handles up to 2 tasks with fresh context, eliminating compaction risk.
+Build the current feature to completion using Task agents. By default a single fresh-context agent executes the whole feature; the loop re-dispatches an agent with the remaining tasks only when the previous agent stops early (error or blocker). Iterations are failure recovery, not fixed-size batching.
 
-**Model:** This command uses **Sonnet** for cost-effective code implementation.
+**Model:** Inherits the session model. Do NOT set a model override when spawning agents.
 
 ## Instructions
 
@@ -18,6 +18,8 @@ Read `.ralph/progress.txt` to get:
 - Feature status
 
 If no feature is active or status is APPROVED/COMPLETE, stop and suggest `/ralph:ralph-plan`.
+
+Determine the project's verification commands: read `CLAUDE.md` for documented test/typecheck/lint commands. If not documented, detect them (package.json scripts, pytest.ini, etc.) and use those. Refer to them below as `{test-command}` and `{typecheck-command}`.
 
 ### 2. Initialize Loop State
 
@@ -35,34 +37,39 @@ Create/update `.ralph/loop-state.json`:
 
 ### 3. Execute Build Loop
 
-**Repeat until feature complete:**
+**Repeat until feature complete or an unrecoverable error:**
 
 a) Increment `iteration` in loop-state.json
 
-b) Spawn a Task agent with `subagent_type: "coder"` and `model: "sonnet"`:
+b) Spawn a Task agent with `subagent_type: "general-purpose"` (no model override):
 
 ```
-Task: Ralph Build Batch - Iteration {N}
+Task: Ralph Build - Iteration {N}
 
 Working directory: {cwd}
 
-Execute exactly 2 tasks (or remaining tasks if fewer) for the current feature.
+Execute ALL remaining tasks for the current feature, in dependency order.
 
 Instructions:
-1. Read `.ralph/progress.txt` to get current task
+1. Read `.ralph/progress.txt` to get the current task and queue
 2. Read `.ralph/features/FEAT_{feature}.md` for task details
-3. Read `CLAUDE.md` for project patterns
+3. Read `CLAUDE.md` for project patterns and dev commands
 
-For each task (max 2):
-1. Run pre-flight: `pnpm test && pnpm typecheck` (fix failures first)
+For each remaining task:
+1. Run pre-flight: {test-command} && {typecheck-command} (fix failures first)
 2. Implement the task following acceptance criteria
 3. Write tests for new code
-4. Verify: `pnpm test && pnpm typecheck`
+4. Verify: {test-command} && {typecheck-command}
 5. Commit with conventional message (stage specific files, not `git add .`)
 6. Update `.ralph/progress.txt`:
    - Move task to Completed with date
    - Set next task in queue
 7. Commit progress update
+
+If you hit a blocker you cannot resolve (failing tests you can't fix,
+missing information, ambiguous acceptance criteria), STOP there and
+return partial results with `error` describing the blocker. Completed
+tasks stay completed — the loop resumes from the next task.
 
 Do NOT:
 - Start dev servers
@@ -82,9 +89,13 @@ Return JSON result:
 ```
 
 c) Parse agent result:
-   - If `error`: Stop loop, report error, set loop-state status to "ERROR"
-   - If `featureComplete`: Exit loop successfully
-   - If `nextTask`: Continue to next iteration
+   - If `featureComplete`: exit loop successfully
+   - If `error`: report it. If the blocker looks transient or the agent
+     made partial progress, dispatch the next iteration with the remaining
+     tasks (fresh context often clears a stuck agent). If the same task
+     fails twice, stop the loop and set loop-state status to "PAUSED"
+   - If the agent stopped early without an error: continue to the next
+     iteration (remaining tasks, fresh context)
 
 d) Update loop-state.json with completed tasks
 
@@ -119,11 +130,9 @@ All tests: PASSING
 Next: Run `/ralph:ralph-plan` for next feature
 ```
 
-3. Output `<ralph:feature-complete/>`
-
 ## Error Handling
 
-If a Task agent fails or returns an error:
+If the same task fails in two consecutive iterations:
 
 1. Set loop-state.json status to "PAUSED"
 2. Output:
@@ -146,7 +155,9 @@ To cancel an active loop, the user can:
 
 ## Do NOT
 
-- Run more than one Task agent at a time (sequential execution)
-- Skip the Task agent spawning (this ensures fresh context)
+- Run more than one Task agent at a time (tasks share repo state —
+  progress.txt updates and commits must stay atomic)
+- Implement tasks directly in the orchestrating session (the Task agent
+  gives each build a clean context)
 - Continue if tests are failing
 - Push to remote

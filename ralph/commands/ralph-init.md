@@ -6,13 +6,7 @@ description: Initialize Ralph Agent in the current project
 
 Set up the Ralph Agent directory structure in this project.
 
-**Model:** This command uses **Opus** for thorough project setup.
-
-## Execution
-
-Spawn a Task agent with `model: "opus"` and `subagent_type: "planner"` to initialize the project structure. The agent should follow the instructions below.
-
----
+Do this directly in the current session — no subagent needed.
 
 ## Instructions
 

@@ -6,13 +6,7 @@ description: Show current Ralph progress status
 
 Display the current state of the Ralph Agent.
 
-**Model:** This command uses **Haiku** for fast, simple status display.
-
-## Execution
-
-Spawn a Task agent with `model: "haiku"` and `subagent_type: "general-purpose"` to read and display status.
-
----
+Do this directly in the current session — read the file and format it; no subagent needed.
 
 ## Instructions
 

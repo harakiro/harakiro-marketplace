@@ -6,13 +6,12 @@ description: Analyze existing codebase and create foundational documents (CLAUDE
 
 Analyze this existing codebase and create the foundational documents that Ralph needs.
 
-**Model:** This command uses **Opus** for comprehensive codebase analysis.
-
 ## Execution
 
-Spawn a Task agent with `model: "opus"` and `subagent_type: "researcher"` to analyze the codebase. The agent should follow the instructions below and return the document contents.
-
-After the agent completes, write the returned content to the appropriate files and commit.
+Dispatch an `Explore` agent (read-only, thorough) to scan the codebase:
+structure, tech stack, patterns from 3-5 representative files, existing
+docs. Then write the documents below in the current session using its
+report, and commit.
 
 ---
 
@@ -63,5 +62,3 @@ After completing, report:
 - Files created
 - Existing features found
 - Open questions for the user
-
-Then output `<promise>COMPLETE</promise>`.

@@ -15,17 +15,19 @@
 
 ## Commands
 
-| Command | Model | Description |
-|---------|-------|-------------|
-| `/ralph:ralph-init` | Opus | Initialize Ralph in current project |
-| `/ralph:ralph-onboard` | Opus | Analyze existing codebase, create CLAUDE.md + PRD.md |
-| `/ralph:ralph-plan` | Opus | Create ROADMAP from PRD or plan next feature |
-| `/ralph:ralph-build` | Session | Implement the next task (manual, up to 2 tasks) |
-| `/ralph:ralph-loop` | Sonnet | **Automated**: Build entire feature using Task agents |
-| `/ralph:ralph-cancel` | Haiku | Cancel an active loop |
-| `/ralph:ralph-feedback` | Session | Parse raw feedback into structured format |
-| `/ralph:ralph-review` | Opus | Create FIX tasks from feedback |
-| `/ralph:ralph-status` | Haiku | Show current progress |
+| Command | Description |
+|---------|-------------|
+| `/ralph:ralph-init` | Initialize Ralph in current project |
+| `/ralph:ralph-onboard` | Analyze existing codebase, create CLAUDE.md + PRD.md |
+| `/ralph:ralph-plan` | Create ROADMAP from PRD or plan next feature |
+| `/ralph:ralph-build` | Implement tasks in the current session (manual) |
+| `/ralph:ralph-loop` | **Automated**: build the entire feature via fresh-context Task agents |
+| `/ralph:ralph-cancel` | Cancel an active loop |
+| `/ralph:ralph-feedback` | Parse raw feedback into structured format |
+| `/ralph:ralph-review` | Create FIX tasks from feedback |
+| `/ralph:ralph-status` | Show current progress |
+
+All commands inherit the session model.
 
 ## Workflows
 
@@ -56,12 +58,12 @@
 
 ### How `/ralph:ralph-loop` Works
 
-The loop command spawns **Task agents** for each batch of work (2 tasks per agent). Each agent has fresh context, which:
-- Prevents context compaction mid-task
-- Ensures clean state for each batch
-- Allows features to complete without manual intervention
-
-The orchestrator tracks progress in `.ralph/loop-state.json` and continues spawning agents until the feature is complete or an error occurs.
+The loop dispatches a **Task agent** with fresh context to build the whole
+feature. If an agent stops early (blocker, error), the orchestrator
+re-dispatches a new agent with the remaining tasks — iterations are
+failure recovery, not fixed-size batching. Progress is tracked in
+`.ralph/loop-state.json` and `.ralph/progress.txt`, so the loop can resume
+from wherever it stopped.
 
 ## Files Created
 
@@ -90,14 +92,12 @@ The orchestrator tracks progress in `.ralph/loop-state.json` and continues spawn
 
 Ralph supports two modes of operation:
 
-**Manual mode** (`/ralph:ralph-build`): Executes up to 2 tasks, then stops. Useful for step-by-step control.
+**Manual mode** (`/ralph:ralph-build`): Executes tasks in the current session. Useful for step-by-step control and mid-task course correction.
 
-**Automated mode** (`/ralph:ralph-loop`): Spawns Task agents to build the entire feature. Each agent handles 2 tasks with fresh context, preventing compaction issues. The loop continues until:
+**Automated mode** (`/ralph:ralph-loop`): Dispatches fresh-context Task agents to build the entire feature. The loop continues until:
 - Feature is complete
-- An error occurs (tests fail, etc.)
+- The same task fails twice (loop pauses)
 - User cancels with `/ralph:ralph-cancel`
-
-Commands output `<promise>COMPLETE</promise>` to signal completion. The loop command also uses `<ralph:feature-complete/>` to indicate a feature is done.
 
 ## License
 

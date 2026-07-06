@@ -6,13 +6,7 @@ description: Cancel an active Ralph Loop
 
 Cancel an active `/ralph:ralph-loop` execution.
 
-**Model:** This command uses **Haiku** for fast, simple state update.
-
-## Execution
-
-Spawn a Task agent with `model: "haiku"` and `subagent_type: "general-purpose"` to update loop state.
-
----
+Do this directly in the current session — a one-field JSON update; no subagent needed.
 
 ## Instructions
 
@@ -50,5 +44,3 @@ To start fresh on this feature:
   2. Update .ralph/progress.txt
   3. /ralph:ralph-loop
 ```
-
-5. Output `<promise>COMPLETE</promise>`

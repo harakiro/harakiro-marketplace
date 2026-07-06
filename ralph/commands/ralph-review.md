@@ -6,15 +6,7 @@ description: Create FIX tasks from structured feedback
 
 Convert structured feedback files into actionable FIX tasks.
 
-**Model:** This command uses **Opus** for nuanced feedback analysis.
-
-## Execution
-
-Spawn a Task agent with `model: "opus"` and `subagent_type: "analyst"` to analyze feedback and create fix tasks. The agent should follow the instructions below and return the task definitions and progress updates.
-
-After the agent completes, write the returned content to the appropriate files and commit.
-
----
+Do this directly in the current session — no subagent needed.
 
 ## Prerequisites
 
@@ -131,5 +123,3 @@ Deferred:
 
 Next: Run /ralph:ralph-loop to implement fixes
 ```
-
-Then output `<promise>COMPLETE</promise>`.
